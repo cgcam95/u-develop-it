@@ -1,6 +1,5 @@
 const express = require('express');
 const db = require('./db/connection');
-const inputCheck = require('./utils/inputCheck');
 const apiRoutes = require('./routes/apiRoutes');
 
 const PORT = process.env.PORT || 3001;
@@ -17,6 +16,15 @@ app.use((req, res) => {
     res.status(404).end();
 });
 
-app.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
-});
+// app.listen(PORT, () => {
+//     console.log(`Server running on port ${PORT}`); // WHEN WAS THIS CHANGED?!
+// });
+
+// Start server after DB connection
+db.connect(err => {
+    if (err) throw err;
+    console.log('Database connected.');
+    app.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+    });
+  });
