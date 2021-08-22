@@ -1,20 +1,15 @@
 const express = require('express');
-const db = require('./db/connection');
-const apiRoutes = require('./routes/apiRoutes');
+const router = express.Router();
+const db = require('../../db/connection');
+const inputCheck = require('../../utils/inputCheck');
 
-const PORT = process.env.PORT || 3001;
-const app = express();
-
-
-// Express middleware
-app.use(express.urlencoded({ extended: false }));
-app.use(express.json());
-app.use('/api', apiRoutes);
-  
-<<<<<<< HEAD
   // Get all candidates
-  app.get('/api/candidates', (req, res) => {
-    const sql = `SELECT * FROM candidates`;
+  router.get('/candidates', (req, res) => {
+    const sql = `SELECT candidates.*, parties.name
+                AS party_name
+                FROM candidates
+                LEFT JOIN parties
+                ON candidates.party_id = parties.id`;
 
     db.query(sql, (err, rows) => {
       if (err) {
@@ -30,8 +25,14 @@ app.use('/api', apiRoutes);
 
 
   // Get a single candidate
-  app.get('/api/candidate/:id', (req, res) => {
-    const sql = `SELECT * FROM candidates WHERE id = ?`;
+  router.get('/candidate/:id', (req, res) => {
+    const sql = `SELECT candidates.*, parties.name 
+                AS party_name 
+                FROM candidates 
+                LEFT JOIN parties 
+                ON candidates.party_id = parties.id 
+                WHERE candidates.id = ?`;
+
     const params = [req.params.id];
 
     db.query(sql, params, (err, row) => {
@@ -47,7 +48,7 @@ app.use('/api', apiRoutes);
   });
 
 // Delete a candidate
-app.delete('/api/candidate/:id', (req, res) => {
+router.delete('/candidate/:id', (req, res) => {
   const sql = `DELETE FROM candidates WHERE id = ?`;
   const params = [req.params.id];
 
@@ -69,7 +70,7 @@ app.delete('/api/candidate/:id', (req, res) => {
 });
 
 // Create a candidate
-app.post('/api/candidate', ({ body }, res) => {
+router.post('/candidate', ({ body }, res) => {
   const errors = inputCheck(
     body,
     'first_name',
@@ -97,22 +98,35 @@ app.post('/api/candidate', ({ body }, res) => {
   });
 });
 
-=======
->>>>>>> develop
-//Default response for any other request (NOT FOUND)
-app.use((req, res) => {
-    res.status(404).end();
+// Update a candidate's party
+router.put('/candidate/:id', (req, res) => {
+  const sql = `UPDATE candidates SET party_id = ? 
+               WHERE id = ?`;
+  const params = [req.body.party_id, req.params.id];
+  
+  const errors = inputCheck(req.body, 'party_id');
+
+if (errors) {
+  res.status(400).json({ error: errors });
+  return;
+}
+  db.query(sql, params, (err, result) => {
+    if (err) {
+      res.status(400).json({ error: err.message });
+      // check if a record was found
+    } else if (!result.affectedRows) {
+      res.json({
+        message: 'Candidate not found'
+      });
+    } else {
+      res.json({
+        message: 'success',
+        data: req.body,
+        changes: result.affectedRows
+      });
+    }
+  });
 });
 
-// app.listen(PORT, () => {
-//     console.log(`Server running on port ${PORT}`); // WHEN WAS THIS CHANGED?!
-// });
 
-// Start server after DB connection
-db.connect(err => {
-    if (err) throw err;
-    console.log('Database connected.');
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  });
+module.exports = router;
